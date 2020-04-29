@@ -1,4 +1,4 @@
-
+// line 1153
 
 
 
@@ -409,6 +409,9 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    This document defines QUIC version 1, which conforms to the protocol
    invariants in [QUIC-INVARIANTS].
 
+
+// 前面就不看了，客套话
+
 1.2.  Terms and Definitions
 
    The keywords "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
@@ -425,10 +428,12 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    QUIC packet:  A complete processable unit of QUIC that can be
       encapsulated in a UDP datagram.  Multiple QUIC packets can be
       encapsulated in a single UDP datagram.
+   // quic 包小于等于一个 UDP 包
 
    Ack-eliciting Packet:  A QUIC packet that contains frames other than
       ACK, PADDING, and CONNECTION_CLOSE.  These cause a recipient to
       send an acknowledgment (see Section 13.2.1).
+   // ack 需求包，除了这几类包之外，其他包需要 ack
 
    Out-of-order packet:  A packet that does not increase the largest
       received packet number for its packet number space (Section 12.3)
@@ -509,6 +514,8 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    provide any means of ensuring ordering between bytes on different
    streams.
 
+   // 不同 stream 之间的数据是没有顺序保证的
+
    QUIC allows for an arbitrary number of streams to operate
    concurrently and for an arbitrary amount of data to be sent on any
    stream, subject to flow control constraints (see Section 4) and
@@ -520,12 +527,14 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    streams carry data in one direction: from the initiator of the stream
    to its peer.  Bidirectional streams allow for data to be sent in both
    directions.
+   // 可以改变类型吗？单变双？
 
    Streams are identified within a connection by a numeric value,
    referred to as the stream ID.  A stream ID is a 62-bit integer (0 to
    2^62-1) that is unique for all streams on a connection.  Stream IDs
    are encoded as variable-length integers (see Section 16).  A QUIC
    endpoint MUST NOT reuse a stream ID within a connection.
+   // 同一个连接内的 stream ID 是uniq 的
 
    The least significant bit (0x1) of the stream ID identifies the
    initiator of the stream.  Client-initiated streams have even-numbered
@@ -554,6 +563,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
                           Table 1: Stream ID Types
 
 
+// 实际可用 60 位
 
 
 
@@ -566,6 +576,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    stream IDs.  A stream ID that is used out of order results in all
    streams of that type with lower-numbered stream IDs also being
    opened.
+   // 严格递增
 
    The first bidirectional stream opened by the client has a stream ID
    of 0.
@@ -584,6 +595,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    QUIC makes no specific allowances for delivery of stream data out of
    order.  However, implementations MAY choose to offer the ability to
    deliver data out of order to a receiving application.
+   // 乱序数据不能太多了
 
    An endpoint could receive data for a stream at the same stream offset
    multiple times.  Data that has already been received can be
@@ -591,6 +603,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    multiple times; an endpoint MAY treat receipt of different data at
    the same offset within a stream as a connection error of type
    PROTOCOL_VIOLATION.
+   // 两次不一样说明被破坏了
 
    Streams are an ordered byte-stream abstraction with no other
    structure visible to QUIC.  STREAM frame boundaries are not expected
@@ -600,6 +613,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    An endpoint MUST NOT send data on any stream without ensuring that it
    is within the flow control limits set by its peer.  Flow control is
    described in detail in Section 4.
+   // 发送数据必须确保符合对端的流控
 
 2.3.  Stream Prioritization
 
@@ -622,6 +636,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    indicate the relative priority of streams.  When deciding which
    streams to dedicate resources to, the implementation SHOULD use the
    information provided by the application.
+   // 优先级没具体规定，但是应该有
 
 2.4.  Required Operations on Streams
 
@@ -644,6 +659,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    *  reset the stream (abrupt termination), resulting in a RESET_STREAM
       frame (Section 19.4), if the stream was not already in a terminal
       state.
+      // reset 是干啥
 
    On the receiving part of a stream, application protocols need to be
    able to:
@@ -664,6 +680,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    components.  Two state machines are described: one for the streams on
    which an endpoint transmits data (Section 3.1), and another for
    streams on which an endpoint receives data (Section 3.2).
+   // 收发状态机
 
 
 
@@ -777,6 +794,8 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    implementation might choose to defer allocating a stream ID to a
    stream until it sends the first STREAM frame and enters this state,
    which can allow for better stream prioritization.
+   // 发送数据之前才生成 stream id 可以使得优先级功能更好实现
+   // 比如没有足够的 id 的时候，就可以阻止进入 ready 状态
 
 
 
@@ -789,6 +808,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    The sending part of a bidirectional stream initiated by a peer (type
    0 for a server, type 1 for a client) starts in the "Ready" state when
    the receiving part is created.
+   // 接收方的发送管道立即 ready
 
    In the "Send" state, an endpoint transmits - and retransmits as
    necessary - stream data in STREAM frames.  The endpoint respects the
@@ -796,6 +816,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    process MAX_STREAM_DATA frames.  An endpoint in the "Send" state
    generates STREAM_DATA_BLOCKED frames if it is blocked from sending by
    stream or connection flow control limits Section 4.1.
+   // stream_data_blocked 发送给对方，希望对方加大阈值
 
    After the application indicates that all stream data has been sent
    and a STREAM frame containing the FIN bit is sent, the sending part
@@ -803,10 +824,12 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    endpoint only retransmits stream data as necessary.  The endpoint
    does not need to check flow control limits or send
    STREAM_DATA_BLOCKED frames for a stream in this state.
+   // 为啥呢，有没有那种，切断 ack 的攻击？
    MAX_STREAM_DATA frames might be received until the peer receives the
    final stream offset.  The endpoint can safely ignore any
    MAX_STREAM_DATA frames it receives from its peer for a stream in this
    state.
+   // ack 攻击不算在 max_stream_data 里面
 
    Once all stream data has been successfully acknowledged, the sending
    part of the stream enters the "Data Recvd" state, which is a terminal
@@ -818,6 +841,8 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    frame from its peer.  In either case, the endpoint sends a
    RESET_STREAM frame, which causes the stream to enter the "Reset Sent"
    state.
+   // 此时数据是不完整的
+   // 但是最小连续的 ack num 之前的数据是可用的?
 
    An endpoint MAY send a RESET_STREAM as the first frame that mentions
    a stream; this causes the sending part of that stream to open and
@@ -1108,6 +1133,7 @@ Internet-Draft           QUIC Transport Protocol           February 2020
    bidirectional stream can terminate one direction by sending a
    RESET_STREAM, and it can encourage prompt termination in the opposite
    direction by sending a STOP_SENDING frame.
+   // 状态机完成
 
 
 
